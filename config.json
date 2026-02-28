@@ -1,0 +1,9 @@
+{
+  "minThresholdUSD": 10,
+  "grtSplitPct": 70,
+  "burnSplitPct": 30,
+  "redToken": "0x2e662015a501f066e043d64d04f77ffe551a4b07",
+  "grtTokenEthereum": "0xc944E90C64B2c07662A292be6244BDf05Cda44a",
+  "grtTokenArbitrum": "0x9623063377AD1B27544C965cCd7342f7EA7e88C7",
+  "burnAddress": "0x000000000000000000000000000000000000dEaD"
+}

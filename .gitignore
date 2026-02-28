@@ -1,0 +1,33 @@
+# Secrets and credentials — never commit these
+.env
+.env.*
+secrets.json
+**/secrets/**
+*.key
+*.pem
+*.p12
+**/private/**
+
+# Bankr API key (lives in ~/.clawdbot, not here — but just in case)
+bankr-config.json
+
+# xurl credentials
+~/.xurl
+
+# OpenClaw config (has API keys)
+openclaw.json
+gateway.yml
+auth-profiles.json
+
+# Logs (can contain tx hashes / amounts)
+logs/
+
+# macOS
+.DS_Store
+.Spotlight-V7
+.Trashes
+
+# Editor
+.vscode/
+*.swp
+*~
