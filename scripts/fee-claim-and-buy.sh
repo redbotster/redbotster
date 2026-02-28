@@ -29,11 +29,13 @@ MIN_THRESHOLD=10      # USD — don't run if fees below this
 GRT_SPLIT_PCT=70      # % of claimed fees to buy GRT
 BURN_SPLIT_PCT=30     # % to buy RED and burn (send to 0xdead)
 DRY_RUN=false
+TWEET_ENABLED=false   # disabled until X posting is working
 
 # ── Parse args ────────────────────────────────────────────────────────────────
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=true ;;
+    --tweet)   TWEET_ENABLED=true ;;
   esac
 done
 
@@ -87,9 +89,13 @@ xurl_ready() {
   xurl auth status 2>/dev/null | grep -q "Logged in" && return 0 || return 1
 }
 
-# Post to @redbotster (skip gracefully if not authed)
+# Post to @redbotster (disabled until X posting is working)
 tweet() {
   local msg="$1"
+  if [ "$TWEET_ENABLED" = "false" ]; then
+    log "Tweeting disabled — skipping (re-enable with --tweet flag)"
+    return
+  fi
   if xurl_ready; then
     if [ "$DRY_RUN" = "true" ]; then
       log "[DRY RUN] Would tweet: $msg"
@@ -97,7 +103,7 @@ tweet() {
       xurl post "$msg" >> "$LOGFILE" 2>&1 && log "Tweeted: $msg" || log "WARN: Tweet failed (non-fatal)"
     fi
   else
-    log "xurl not authenticated — skipping tweet (run xurl auth oauth2 to enable)"
+    log "xurl not authenticated — skipping tweet"
   fi
 }
 
