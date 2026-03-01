@@ -30,7 +30,7 @@ API_BASE  = "https://api.1claw.xyz/v1"
 CHAINS = {
     "base": {
         "chain_id": 8453,
-        "rpc": "https://base.llamarpc.com",
+        "rpc": "https://base-rpc.publicnode.com",
         "router": "0x2626664c2603336E57B271c5C0b26F421741e481",  # SwapRouter02
         "usdc":   "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
         "weth":   "0x4200000000000000000000000000000000000006",
@@ -69,6 +69,25 @@ INPUTS = {
 
 BURN_ADDRESS       = "0x000000000000000000000000000000000000dEaD"
 RED_BURN_THRESHOLD = 0.10   # only burn if wallet holds > 10% of total supply
+
+# ── Clanker pool config (RED trades on a custom Clanker AMM, not Uniswap v3) ──
+# RED uses the Clanker pool router at 0x21e99B… which routes through Uniswap v4 internally.
+# Pool-specific params decoded from on-chain buy transactions for RED.
+CLANKER_ROUTER = "0x21e99B325d53FE3d574ac948B9CB1519DA03E518"
+CLANKER_POOL_PARAMS = {
+    "RED": {
+        "word2":  "0x7f77bad9eb06373fe3aee84f85a9d701ff820eeb",
+        "word3":  "0x571bb664cd515b533c2fe68a23367551f6fc559d",
+        "word5":  0x0dac,  # 3500
+        "word6":  0x7d0,   # 2000
+        "word14": "0x6ff5693b99212da76ad316178a184ab56d299b43",  # Universal Router
+        "word15": "0x0d5e0f971ed27fbff6c2837bf31316121532048d",  # hook
+        "word16": 0x800000,
+        "word17": 0xc8,
+        "word18": "0xb429d62f8f3bffb98cdb9569533ea23bf0ba28cc",
+        "word19": 0x100,
+    }
+}
 
 # ── ABIs ───────────────────────────────────────────────────────────────────────
 ERC20_ABI = [
@@ -168,6 +187,57 @@ def ensure_approval(w3, account, token_addr, spender, amount, cfg):
     })
     send_tx(w3, account, tx)
 
+def clanker_buy_red(w3, account, eth_amount_wei):
+    """Buy RED using the Clanker pool router with native ETH."""
+    import time as _time
+    p = CLANKER_POOL_PARAMS["RED"]
+
+    def pad(addr):
+        return bytes(12) + bytes.fromhex(addr.lower()[2:])
+
+    def u256(v):
+        return v.to_bytes(32, "big")
+
+    deadline = int(_time.time()) + 3600
+    calldata_params = (
+        u256(0) +                                 # [0] amountOutMin = 0
+        u256(0x140) +                             # [1] offset
+        pad(p["word2"]) +                         # [2]
+        pad(p["word3"]) +                         # [3] RED pool
+        pad(account.address) +                    # [4] recipient
+        u256(p["word5"]) +                        # [5]
+        u256(p["word6"]) +                        # [6]
+        u256(0) +                                 # [7]
+        u256(0) +                                 # [8]
+        u256(deadline) +                          # [9] deadline
+        u256(1) +                                 # [10] array length
+        u256(32) +                                # [11]
+        pad("0x4200000000000000000000000000000000000006") +  # [12] WETH
+        pad(TOKENS["RED"]["address"]) +           # [13] RED
+        pad(p["word14"]) +                        # [14] Universal Router
+        pad(p["word15"]) +                        # [15] hook
+        u256(p["word16"]) +                       # [16]
+        u256(p["word17"]) +                       # [17]
+        pad(p["word18"]) +                        # [18] RED pool
+        u256(p["word19"]) +                       # [19]
+        u256(0)                                   # [20]
+    )
+    calldata = bytes.fromhex("0f27c5c1") + calldata_params
+
+    gas_price = w3.eth.gas_price
+    tx = {
+        "chainId": 8453,
+        "to": Web3.to_checksum_address(CLANKER_ROUTER),
+        "from": account.address,
+        "value": eth_amount_wei,
+        "data": "0x" + calldata.hex(),
+        "maxFeePerGas": gas_price * 2,
+        "maxPriorityFeePerGas": gas_price,
+    }
+    tx["gas"] = w3.eth.estimate_gas({**tx, "from": account.address})
+    return send_tx(w3, account, tx)
+
+
 def red_burn_eligible(w3, wallet_addr):
     """Returns (balance, total_supply, pct, eligible) for RED."""
     red_addr = Web3.to_checksum_address(TOKENS["RED"]["address"])
@@ -215,7 +285,31 @@ def cmd_swap(args):
     # Approve router
     ensure_approval(w3, account, token_in_addr, router_addr, amount_in, cfg)
 
-    # Try fee tiers: 3000, 500, 10000
+    # RED trades on the Clanker pool (not Uniswap v3) — requires native ETH
+    if symbol_out == "RED" and chain == "base":
+        log("RED uses Clanker pool — unwrapping WETH to ETH if needed, then buying...")
+        WETH_ABI_MIN = [
+            {"name": "withdraw", "type": "function", "inputs": [{"name": "wad", "type": "uint256"}], "outputs": [], "stateMutability": "nonpayable"},
+        ]
+        weth_c = w3.eth.contract(address=Web3.to_checksum_address(token_in_addr), abi=WETH_ABI_MIN)
+        if symbol_in == "WETH":
+            log(f"Unwrapping {float(args.amount):.6f} WETH → ETH...")
+            unwrap_tx = weth_c.functions.withdraw(amount_in).build_transaction({
+                "chainId": cfg["chain_id"], "from": account.address,
+                "maxFeePerGas": w3.eth.gas_price * 2, "maxPriorityFeePerGas": w3.eth.gas_price,
+            })
+            send_tx(w3, account, unwrap_tx)
+        eth_bal = w3.eth.get_balance(account.address)
+        keep_gas = int(0.001 * 1e18)
+        eth_to_spend = min(amount_in, eth_bal - keep_gas)
+        if eth_to_spend <= 0:
+            fail("Insufficient ETH after unwrap for Clanker buy")
+        log(f"Buying RED with {eth_to_spend/1e18:.6f} ETH via Clanker pool...")
+        tx_hash = clanker_buy_red(w3, account, eth_to_spend)
+        out("completed", f"Bought RED on base with {eth_to_spend/1e18:.6f} ETH via Clanker pool. TX: {tx_hash}", tx=tx_hash)
+        return
+
+    # All other tokens: Uniswap v3 exactInputSingle
     router    = w3.eth.contract(address=Web3.to_checksum_address(router_addr), abi=ROUTER_ABI)
     gas_price = w3.eth.gas_price
     tx_hash   = None
