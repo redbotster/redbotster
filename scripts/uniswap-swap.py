@@ -260,20 +260,7 @@ def bridge_weth_to_arbitrum(account, amount_wei):
         "maxPriorityFeePerGas": gas_price,
     })
     bridge_tx = send_tx(w3_base, account, tx)
-    log(f"Bridge deposit TX on Base: {bridge_tx} — waiting for WETH on Arbitrum...")
-
-    # Poll Arbitrum until WETH arrives (timeout 3 min)
-    w3_arb, _ = connect("arbitrum")
-    weth_arb_c = w3_arb.eth.contract(address=Web3.to_checksum_address(weth_arb), abi=ERC20_ABI)
-    deadline = time.time() + 300  # 5 minute timeout
-    while time.time() < deadline:
-        bal = weth_arb_c.functions.balanceOf(account.address).call()
-        if bal >= output_amt:
-            log(f"WETH arrived on Arbitrum: {bal/1e18:.6f}")
-            return
-        log(f"Waiting for bridge... Arbitrum WETH: {bal/1e18:.6f}")
-        time.sleep(15)
-    fail("Bridge timeout: WETH did not arrive on Arbitrum within 3 minutes")
+    log(f"Bridge deposit TX on Base: {bridge_tx} — funds will arrive on Arbitrum asynchronously.")
 
 
 def send_tx(w3, account, tx):
@@ -417,11 +404,28 @@ def cmd_swap(args):
             balance = tin_contract.functions.balanceOf(account.address).call()
             log(f"Wrapped — WETH balance now: {balance / 10**token_in_decimals:.6f}")
         elif chain == "arbitrum":
-            # Bridge WETH from Base → Arbitrum via Across, then re-check balance
-            log("No WETH/ETH on Arbitrum — bridging from Base...")
-            bridge_weth_to_arbitrum(account, amount_in)
-            balance = tin_contract.functions.balanceOf(account.address).call()
-            log(f"Post-bridge WETH balance on Arbitrum: {balance / 10**token_in_decimals:.6f}")
+            # Check if native ETH arrived from a previous bridge (Across delivers ETH on Arbitrum)
+            keep_gas = int(0.003 * 1e18)
+            if eth_bal - keep_gas >= amount_in:
+                log(f"Native ETH on Arbitrum ({eth_bal/1e18:.6f}) — wrapping to WETH before swap...")
+                WETH_DEPOSIT_ABI = [{"name": "deposit", "type": "function", "inputs": [], "outputs": [], "stateMutability": "payable"}]
+                weth_c = w3.eth.contract(address=Web3.to_checksum_address(token_in_addr), abi=WETH_DEPOSIT_ABI)
+                wrap_tx = weth_c.functions.deposit().build_transaction({
+                    "chainId": cfg["chain_id"],
+                    "from": account.address,
+                    "value": amount_in,
+                    "maxFeePerGas": w3.eth.gas_price * 2,
+                    "maxPriorityFeePerGas": w3.eth.gas_price,
+                })
+                send_tx(w3, account, wrap_tx)
+                balance = tin_contract.functions.balanceOf(account.address).call()
+                log(f"Wrapped — Arbitrum WETH balance: {balance / 10**token_in_decimals:.6f}")
+            else:
+                # No existing funds on Arbitrum — fire bridge from Base and skip this run's GRT swap
+                log("No WETH/ETH on Arbitrum — bridging from Base (swap will execute next run)...")
+                bridge_weth_to_arbitrum(account, amount_in)
+                out("completed", f"Bridged {float(args.amount):.6f} WETH Base→Arbitrum via Across. GRT swap will execute next run when funds arrive.")
+                return
         else:
             fail(f"Insufficient funds: {balance/10**token_in_decimals:.6f} WETH + {eth_bal/1e18:.6f} ETH (need {args.amount})")
     if balance < amount_in:

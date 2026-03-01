@@ -242,7 +242,7 @@ weth_allocation_swap() {
     -H "Content-Type: application/json" \
     -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_call\",\"params\":[{\"to\":\"$weth_contract\",\"data\":\"$rpc_data\"},\"latest\"],\"id\":1}" \
     | jq -r '.result' 2>/dev/null || echo "0x0")
-  weth_amount=$(node -e "console.log(parseInt('$raw_balance', 16) / 1e18)" 2>/dev/null || echo "0")
+  weth_amount=$(python3 -c "print(int('$raw_balance', 16) / 1e18)" 2>/dev/null || echo "0")
   weth_usd=$(echo "$weth_amount ${ETH_PRICE:-2000}" | awk '{printf "%.2f", $1 * $2}')
   log "Punkwallet WETH: $weth_amount WETH @ \$${ETH_PRICE:-2000} = \$$weth_usd"
 
