@@ -76,7 +76,7 @@ TOKENS = {
     "RED":   {"chain": "base",     "address": "0x2e662015a501f066e043d64d04f77ffe551a4b07", "decimals": 18},
     "GRT":   {"chain": "arbitrum", "address": "0x9623063377AD1B27544C965cCd7342f7EA7e88C7", "decimals": 18},
     "WBTC":  {"chain": "base",     "address": "0x0555E30da8f98308EdB960aa94C0Db47230d2B9c", "decimals": 8},
-    "LINK":  {"chain": "base",     "address": "0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196", "decimals": 18},
+    "YARR":  {"chain": "base",     "address": "0x309792e8950405f803c0e3f2c9083bdff4466ba3", "decimals": 18},
     "CLAWD": {"chain": "base",     "address": "0x9f86dB9fc6f7c9408e8Fda3Ff8ce4e78ac7a6b07", "decimals": 18},
 }
 
@@ -97,7 +97,7 @@ INPUTS = {
 }
 
 BURN_ADDRESS       = "0x000000000000000000000000000000000000dEaD"
-RED_BURN_THRESHOLD = 0.10   # only burn if wallet holds > 10% of total supply
+RED_BURN_THRESHOLD = 0.05   # only burn if wallet holds > 5% of total supply
 
 # ── Clanker pool config (RED trades on a custom Clanker AMM, not Uniswap v3) ──
 # RED uses the Clanker pool router at 0x21e99B… which routes through Uniswap v4 internally.
@@ -574,7 +574,7 @@ def cmd_check_burn(args):
     dec = TOKENS["RED"]["decimals"]
     msg = (
         f"RED balance: {bal/10**dec:,.0f} ({pct*100:.4f}% of supply). "
-        f"Burn threshold: 10%. "
+        f"Burn threshold: 5%. "
         f"{'ELIGIBLE to burn.' if eligible else 'NOT eligible — accumulating.'}"
     )
     out("completed", msg, data={"eligible": eligible, "pct": pct * 100, "balance": bal / 10**dec})
