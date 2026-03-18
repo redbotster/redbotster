@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RedBotster.eth — AI DeFi Treasury Bot</title>
+  <meta name="description" content="AI-powered DeFi treasury bot that claims Clanker creator fees for $RED on Base and reinvests them into a diversified on-chain portfolio.">
+  <meta property="og:title" content="RedBotster.eth">
+  <meta property="og:description" content="AI DeFi treasury bot on Base. Claims fees, diversifies, burns.">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg-card: #12121a;
+      --bg-card-hover: #1a1a25;
+      --border: #1e1e2e;
+      --text: #e4e4ef;
+      --text-dim: #8888a0;
+      --accent: #e63946;
+      --accent-glow: rgba(230, 57, 70, 0.15);
+      --green: #2ecc71;
+      --orange: #f39c12;
+      --blue: #3498db;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    a { color: var(--accent); text-decoration: none; transition: opacity 0.2s; }
+    a:hover { opacity: 0.8; }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 60px 0 40px;
+    }
+
+    .pfp {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 3px solid var(--accent);
+      box-shadow: 0 0 30px var(--accent-glow);
+      margin-bottom: 20px;
+      background: var(--bg-card);
+      margin-left: auto;
+      margin-right: auto;
+      overflow: hidden;
+    }
+
+    .pfp img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .header .tagline {
+      color: var(--text-dim);
+      font-size: 16px;
+      max-width: 500px;
+      margin: 0 auto 24px;
+    }
+
+    /* Nav Links */
+    .nav-links {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+
+    .nav-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .nav-links a:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent);
+      opacity: 1;
+    }
+
+    .nav-links a svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: 48px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title .icon {
+      font-size: 20px;
+    }
+
+    /* Treasury Cards */
+    .treasury-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .treasury-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .treasury-card .label {
+      font-size: 13px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .treasury-card .value {
+      font-size: 18px;
+      font-weight: 700;
+      word-break: break-all;
+    }
+
+    .treasury-card .value a {
+      color: var(--text);
+    }
+
+    .treasury-card .value a:hover {
+      color: var(--accent);
+    }
+
+    .treasury-card .sub {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-card .stat-num {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .stat-card .stat-label {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    /* Highlight banner */
+    .highlight-banner {
+      background: linear-gradient(135deg, var(--accent-glow), transparent);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-top: 16px;
+    }
+
+    .highlight-banner .big {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .highlight-banner .note {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* Portfolio Table */
+    .portfolio-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .portfolio-table th,
+    .portfolio-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .portfolio-table th {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      font-weight: 600;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .portfolio-table tr:last-child td { border-bottom: none; }
+
+    .portfolio-table .token-name {
+      font-weight: 700;
+    }
+
+    .portfolio-table .chain-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .chain-base { background: #0052ff20; color: #4d8fff; }
+    .chain-arb { background: #28a0f020; color: #28a0f0; }
+
+    .portfolio-table .split {
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .portfolio-table .contract-link {
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .portfolio-table .contract-link:hover {
+      color: var(--accent);
+    }
+
+    /* How it works */
+    .flow-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      overflow-x: auto;
+      white-space: pre;
+      color: var(--text-dim);
+    }
+
+    .flow-box .hl { color: var(--accent); font-weight: 700; }
+    .flow-box .green { color: var(--green); }
+    .flow-box .blue { color: var(--blue); }
+    .flow-box .orange { color: var(--orange); }
+
+    /* Stack */
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .stack-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .stack-card .stack-name {
+      font-weight: 700;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .stack-card .stack-desc {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 40px 0 60px;
+      color: var(--text-dim);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer a { color: var(--text-dim); }
+    .footer a:hover { color: var(--accent); }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .header { padding: 40px 0 30px; }
+      .header h1 { font-size: 22px; }
+      .nav-links { gap: 8px; }
+      .nav-links a { padding: 6px 12px; font-size: 13px; }
+      .portfolio-table { font-size: 13px; }
+      .portfolio-table th, .portfolio-table td { padding: 10px 12px; }
+      .flow-box { font-size: 11px; padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="pfp"><img src="pfp.jpg" alt="RedBotster"></div>
+      <h1>RedBotster.eth</h1>
+      <p class="tagline">AI-powered DeFi treasury bot on Base. Claims Clanker creator fees for $RED and reinvests into a diversified on-chain portfolio — every 15 minutes, fully automated.</p>
+    </div>
+
+    <!-- Nav Links -->
+    <div class="nav-links">
+      <a href="https://github.com/redbotster/redbotster" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <a href="https://x.com/redbotster" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        @redbotster
+      </a>
+      <a href="https://dexscreener.com/base/0x2e662015a501f066e043d64d04f77ffe551a4b07" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M3 3v18h18V3H3zm16 16H5V5h14v14zM7 17l3.5-4.5 2.5 3L16 11l4 6H7z" fill="currentColor"/></svg>
+        DexScreener
+      </a>
+      <a href="https://zerion.io/0xEF5527cC704C5Ca5443869EAECbB8613d9D97E5F" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/></svg>
+        Zerion
+      </a>
+    </div>
+
+    <!-- Treasury -->
+    <div class="section">
+      <h2 class="section-title"><span class="icon">🏦</span> Treasury</h2>
+      <div class="treasury-grid">
+        <div class="treasury-card">
+          <div class="label">Punkwallet (Accumulator)</div>
+          <div class="value">
+            <a href="https://basescan.org/address/0xEF5527cC704C5Ca5443869EAECbB8613d9D97E5F" target="_blank" rel="noopener">
+              0xEF55...e5F
+            </a>
+          </div>
+          <div class="sub">RED + portfolio tokens accumulate here</div>
+        </div>
+        <div class="treasury-card">
+          <div class="label">Agent Wallet (Executor)</div>
+          <div class="value">
+            <a href="https://basescan.org/address/0x8ac60a29f26abb359a1201990e7f9c2cefe2ec57" target="_blank" rel="noopener">
+              0x8ac6...c57
+            </a>
+          </div>
+          <div class="sub">Bankr wallet — executes claims &amp; swaps</div>
+        </div>
+        <div class="treasury-card">
+          <div class="label">Burn Address</div>
+          <div class="value">
+            <a href="https://basescan.org/address/0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">
+              0x0000...dEaD
+            </a>
+          </div>
+          <div class="sub">Excess RED above 10% supply burned here</div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num">67</div>
+          <div class="stat-label">Fee Claims</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">134</div>
+          <div class="stat-label">Total Runs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">5</div>
+          <div class="stat-label">Portfolio Tokens</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">15m</div>
+          <div class="stat-label">Run Interval</div>
+        </div>
+      </div>
+
+      <div class="highlight-banner">
+        <div class="big">0 RED sold &middot; ever</div>
+        <div class="note">Verify on <a href="https://basescan.org/address/0xEF5527cC704C5Ca5443869EAECbB8613d9D97E5F" target="_blank" rel="noopener">BaseScan</a></div>
+      </div>
+    </div>
+
+    <!-- Portfolio -->
+    <div class="section">
+      <h2 class="section-title"><span class="icon">💎</span> Portfolio Allocation</h2>
+      <table class="portfolio-table">
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Chain</th>
+            <th>Split</th>
+            <th>Contract</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="token-name">RED</td>
+            <td><span class="chain-badge chain-base">Base</span></td>
+            <td class="split">20%</td>
+            <td><a class="contract-link" href="https://basescan.org/token/0x2e662015a501f066e043d64d04f77ffe551a4b07" target="_blank" rel="noopener">0x2e66...4b07</a></td>
+          </tr>
+          <tr>
+            <td class="token-name">BLACK</td>
+            <td><span class="chain-badge chain-base">Base</span></td>
+            <td class="split">20%</td>
+            <td><a class="contract-link" href="https://basescan.org/token/0xF5858af63447F7252db3C06967dbB6Da73d21BA3" target="_blank" rel="noopener">0xF585...BA3</a></td>
+          </tr>
+          <tr>
+            <td class="token-name">WBTC</td>
+            <td><span class="chain-badge chain-base">Base</span></td>
+            <td class="split">20%</td>
+            <td><a class="contract-link" href="https://basescan.org/token/0x0555E30da8f98308EdB960aa94C0Db47230d2B9c" target="_blank" rel="noopener">0x0555...B9c</a></td>
+          </tr>
+          <tr>
+            <td class="token-name">YARR</td>
+            <td><span class="chain-badge chain-base">Base</span></td>
+            <td class="split">20%</td>
+            <td><a class="contract-link" href="https://basescan.org/token/0x309792e8950405f803c0e3f2c9083bdff4466ba3" target="_blank" rel="noopener">0x3097...6ba3</a></td>
+          </tr>
+          <tr>
+            <td class="token-name">CLAWD</td>
+            <td><span class="chain-badge chain-base">Base</span></td>
+            <td class="split">20%</td>
+            <td><a class="contract-link" href="https://basescan.org/token/0x9f86dB9fc6f7c9408e8Fda3Ff8ce4e78ac7a6b07" target="_blank" rel="noopener">0x9f86...6b07</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size: 13px; color: var(--text-dim); margin-top: 8px;">
+        Plus: 5% of punkwallet WETH balance swapped into the same splits every run.
+      </p>
+    </div>
+
+    <!-- How It Works -->
+    <div class="section">
+      <h2 class="section-title"><span class="icon">⚙️</span> How It Works</h2>
+      <div class="flow-box"><span class="hl">Every 15 minutes (cron):</span>
+
+  1. Check Clanker fees for RED on Base
+     ├─ <span class="orange">No fees / below $10 threshold</span>
+     │    └─ Sweep RED → punkwallet
+     │    └─ Swap 5% of punkwallet WETH into portfolio
+     └─ <span class="green">Fees ≥ $10</span>
+          └─ Claim all fees (swap non-WETH to WETH)
+          └─ Split WETH <span class="hl">20/20/20/20/20</span>
+          └─ Buy each token via Uniswap v3
+               <span class="blue">RED:</span>   Clanker pool router (custom AMM)
+               <span class="blue">BLACK:</span> Uniswap v3 on Base
+               <span class="blue">WBTC:</span>  Uniswap v3 on Base
+               <span class="blue">YARR:</span>  Uniswap v3 on Base
+               <span class="blue">CLAWD:</span> Uniswap v3 on Base
+          └─ If >10% RED supply held: <span class="hl">burn excess</span> above 10% floor
+          └─ Sweep RED from agent wallet → punkwallet
+          └─ Swap 5% of punkwallet WETH into portfolio</div>
+    </div>
+
+    <!-- Stack -->
+    <div class="section">
+      <h2 class="section-title"><span class="icon">🔧</span> Stack</h2>
+      <div class="stack-grid">
+        <a href="https://openclaw.ai" target="_blank" rel="noopener" style="text-decoration: none;">
+          <div class="stack-card">
+            <div class="stack-name">OpenClaw</div>
+            <div class="stack-desc">AI agent runtime + secret vault</div>
+          </div>
+        </a>
+        <a href="https://bankr.bot" target="_blank" rel="noopener" style="text-decoration: none;">
+          <div class="stack-card">
+            <div class="stack-name">Bankr</div>
+            <div class="stack-desc">Natural language DeFi execution</div>
+          </div>
+        </a>
+        <a href="https://uniswap.org" target="_blank" rel="noopener" style="text-decoration: none;">
+          <div class="stack-card">
+            <div class="stack-name">Uniswap v3</div>
+            <div class="stack-desc">Direct on-chain swaps via private key</div>
+          </div>
+        </a>
+        <a href="https://clanker.world" target="_blank" rel="noopener" style="text-decoration: none;">
+          <div class="stack-card">
+            <div class="stack-name">Clanker</div>
+            <div class="stack-desc">RED token AMM (custom pool router)</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Source Code -->
+    <div class="section">
+      <h2 class="section-title"><span class="icon">📂</span> Open Source</h2>
+      <div class="treasury-card">
+        <div class="label">GitHub Repository</div>
+        <div class="value">
+          <a href="https://github.com/redbotster/redbotster" target="_blank" rel="noopener">
+            redbotster/redbotster
+          </a>
+        </div>
+        <div class="sub">Full source code — fee claim script, Uniswap swap logic, config, run history</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>
+        RedBotster.eth &middot;
+        <a href="https://x.com/redbotster" target="_blank" rel="noopener">X</a> &middot;
+        <a href="https://github.com/redbotster/redbotster" target="_blank" rel="noopener">GitHub</a> &middot;
+        <a href="https://dexscreener.com/base/0x2e662015a501f066e043d64d04f77ffe551a4b07" target="_blank" rel="noopener">DexScreener</a>
+      </p>
+      <p style="margin-top: 8px;">Built with <a href="https://openclaw.ai" target="_blank" rel="noopener">OpenClaw</a></p>
+    </div>
+  </div>
+</body>
+</html>
